@@ -1,17 +1,20 @@
-#include <stdio.h>
 #include <iostream>
-#include <windows.h>
-#include <fstream>
-#include <string>
+#include <windows.h> //for handles
+#include <fstream> // for file stuff
+#include <string>// in incoding
+#include <conio.h> // for button presses
 using namespace std;
-int x, y, frame= 0, sizer, repeats;
+int x, y, frame = 0, sizer, repeats;
 int storage[45][22][10];
 int sizex = 45, sizey = 22;
+HANDLE  hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+bool drawing = false, thiccdrawing = false;
+short int ins;
 // made by tpxrules
 void save() {
 	ofstream out;
 	out.open("drawing.txt"); //savefile
-	for (int k = 0; k < 10 ; k++) {
+	for (int k = 0; k < 10; k++) {
 		for (int i = 0; i < sizey; i++)
 		{
 			for (int j = 0; j < sizex; j++)
@@ -27,9 +30,9 @@ void incode() {
 	for (int page = 0; page < 10; page++)
 	{
 		string var = "frame" + to_string(page + 1) + ".ppm";
-		out.open(var);	
+		out.open(var);
 		//initializing PPM file
-		out << "P3" << " " << sizex*10 << " " << sizey*10 << " " << 255 << endl;
+		out << "P3" << " " << sizex * 10 << " " << sizey * 10 << " " << 255 << endl;
 		for (int i = 0; i < sizey; i++)
 		{
 			for (size_t o = 0; o < 10; o++)
@@ -97,41 +100,44 @@ void incode() {
 					}
 				}
 			}
-		}
-		out.close();
+		}out.close();
 	}
 }
 void toptext() {
 	// astheticness *sparkles*
-	HANDLE  hConsole;
-	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	//---------------
-	cout << " ________________________________________________________________________________________\n"
+	cout << " _________________________________________________________________________________________\n"
 		<< "|Paint.exe_________________________________________________________________________";
 	SetConsoleTextAttribute(hConsole, 10);
 	cout << "[-]";
 	SetConsoleTextAttribute(hConsole, 4);
 	cout << "[X]";
 	SetConsoleTextAttribute(hConsole, 15);
-	cout << "|\n";
-
+	cout << " |\n";
 	//------------------------------------
 	SetConsoleTextAttribute(hConsole, 15);
-	cout << "( wasd ) move, ( e ) pixel, ( f ) fill , (r) drawing, ( n and m ) frame change\n";
+	cout << "( wasd ) move, ( e ) pixel, ( f ) fill , (r) drawing, ( n and m ) frame change \n\t\t\t(t) thick drawing (o)color picker  (";
+	SetConsoleTextAttribute(hConsole, ins * 16 + ins);
+	cout << "0000";
+	SetConsoleTextAttribute(hConsole, 15);
+	cout << ")\n";
 	SetConsoleTextAttribute(hConsole, 14);
 	cout << " (k) reload, ( i ) export, ( q ) save, ( x ) save and exit.";
 	SetConsoleTextAttribute(hConsole, 15);
 	cout << "\t frame:( ";
 	SetConsoleTextAttribute(hConsole, 10);
-	cout << frame+1;
+	cout << frame + 1;
 	SetConsoleTextAttribute(hConsole, 15);
 	cout << " / 10 )\n";
-	for (int i = 0; i < 16; i++)
+	SetConsoleTextAttribute(hConsole, 7);
+	cout << "               0  ";
+	for (int i = 1; i < 16; i++)
 	{
-		SetConsoleTextAttribute(hConsole, i);
+		SetConsoleTextAttribute(hConsole, i * 16);
 		cout << i << "  ";
 	}
-	cout << "\n\n";
+	SetConsoleTextAttribute(hConsole, 7);
+	cout << "| \n\n";
 }
 void fill(int ins) {
 	//to fill up the entire page with one color
@@ -143,20 +149,26 @@ void fill(int ins) {
 	}
 }
 void render() {
-	// render the scene every update
-	HANDLE  hConsole;
-	hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	// render the scene every update	
 	for (int i = 0; i < sizey; i++)
 	{
 		for (int j = 0; j < sizex; j++)
 		{
-			SetConsoleTextAttribute(hConsole, storage[j][i][frame]);
-			if (y == i and x == j)
+			if (y == i and x == j) {
+				if (storage[j][i][frame] == 0)
+					SetConsoleTextAttribute(hConsole, 7);// here.
+				else
+					SetConsoleTextAttribute(hConsole, storage[j][i][frame] * 16);
 				cout << "X ";
-			else
-				cout << "0\ ";
+			}
+			else {
+				SetConsoleTextAttribute(hConsole, storage[j][i][frame] * 16 + storage[j][i][frame]);
+				//hue(storage[j][i][frame]);
+				cout << "0 ";
+			}
 		}
-		cout << "\n";
+		SetConsoleTextAttribute(hConsole, 7);
+		cout << "|\n";
 	}
 	//setting to white to make commands always white after
 	SetConsoleTextAttribute(hConsole, 15);
@@ -179,109 +191,160 @@ void load() {
 	//input previous saves 
 	ifstream in;
 	in.open("drawing.txt"); //save file
-	for (int k = 0; k < sizey; k++){
+	for (int k = 0; k < sizey; k++) {
 		for (int i = 0; i < sizey; i++)
 		{
 			for (int j = 0; j < sizex; j++)
 				in >> storage[j][i][k];
 		}
-}
+	}
 	in.close();
-
+}
+void rerender() {
+	system("cls");
+	toptext();
+	render();
+}
+void draw() {
+	if (drawing == true)
+		storage[x][y][frame] = ins;
+	if (thiccdrawing == true) {
+		storage[x][y][frame] = ins;
+		if (y < 22) {
+			storage[x - 1][y + 1][frame] = ins;
+			storage[x + 1][y + 1][frame] = ins;
+			storage[x][y + 1][frame] = ins;
+		}
+		if (y > 0) {
+			storage[x + 1][y - 1][frame] = ins;
+			storage[x - 1][y - 1][frame] = ins;
+			storage[x][y - 1][frame] = ins;
+		}
+		storage[x + 1][y][frame] = ins;
+		storage[x - 1][y][frame] = ins;
+	}
 }
 void brain() {
 	//input system
-	bool drawing = false;
 	char input;
-	short int ins;
 	bool open = true;
-
+	rerender();
 	//brains
 	while (1)
 	{
-		system("cls");
-		toptext();
-		render();
-		// draws when drawing is true
-		if (drawing == true)
-			storage[x][y][frame] = ins;
+		// draws when drawing is trues
+		if (_kbhit()) {
+			switch (_getch())
+			{
+			case 'a':
+				if (x > 0)
+					x--;
+				draw();
+				rerender();
+				break;
+			case 'd':
+				if (x < sizex - 1)
+					x++;
+				draw();
+				rerender();
+				break;
+			case 'w':
+				if (y > 0) {
+					y--;
+					draw();
+					rerender();
+					break;
+			case 's':
+				if (y < sizey - 1)
+					y++;
+				draw();
+				rerender();
+				break;
+			case 'n':
+				if (frame > 0)
+					frame--;
+				rerender();
+				break;
+			case 'm':
+				if (frame < 9)
+					frame++;
+				rerender();
+				break;
+			case 'k':
+				load();
+				rerender();
+				break;
+			case 'e':
+				storage[x][y][frame] = ins;
+				rerender();
+				break;
+			case 'r':
+				if (drawing == true)
+					drawing = false;
+				else {
 
-		cin >> input;
-		//movement
-		if (input == 'a' and x > 0) {
-			x--;
-		}
-		else	if (input == 'd' and x < sizex - 1) {
-			x++;
-		}
-		else	if (input == 'w' and y > 0) {
-			y--;
-		}
-		else	if (input == 's' and y < sizey - 1) {
-			y++;
-		}
-		//changing between frames
-		else if (input == 'n' and frame > 0) {
-			frame--;
-		}
-		else if (input == 'm' and frame < 9) {
-			frame++;
-		}else{
-		switch (input)
-		{
-		case 'k':
-			load();
-			break;
-		case 'e':
-			cout << "color code:\t";
-			cin >> ins;
-			storage[x][y][frame] = ins;
-			break;
-		case 'r':
-			if (drawing == true)
-				drawing = false;
-			else {
+					drawing = true;
+					draw();
+				}
+				rerender();
+				break;
+			case 't':
+				if (thiccdrawing == true)
+					thiccdrawing = false;
+				else {
+
+					thiccdrawing = true;
+					draw();
+				}
+				rerender();
+				break;
+			case 'o':
 				cout << "color code:\t";
-				drawing = true;
 				cin >> ins;
+				rerender();
+				break;
+			case 'q':
+				save();
+				rerender();
+				break;
+			case 'i':
+				incode();
+				rerender();
+				break;
+			case 'p':
+				cout << "how many frames are you going to display: \t";
+				cin >> sizer;
+				cout << "repeat amount: \t";
+				cin >> repeats;
+				play();
+				rerender();
+				break;
+			case 'f':
+				cout << "color code:\t";
+				cin >> ins;
+				fill(ins);
+				rerender();
+				break;
+			case 'x':
+				save();
+				return;
+				rerender();
+				break;
+			default:
+
+				break;
+				}
 			}
-			break;
-		case 'q':
-			save();
-			break;
-		case 'i':
-			incode();
-			break;
-		case 'p':
-			cout << "how many frames are you going to display: \t";
-			cin >> sizer;
-			cout << "repeat amount: \t";
-			cin >> repeats;
-			play();
-			break;
-		case 'f':
-			cout << "color code:\t";
-			cin >> ins;
-			fill(ins);
-			break;
-		case 'x':
-			save();
-			return;
-			break;
-		default:
-			break;
 		}
-	}
 	}
 }
+
 int main()
 {
 	//main menu
 	int input = 0;
 	while (1)
-	{		
-			HANDLE  hConsole;
-			hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	{
 		{
 			cout << " ________________________________________________________________________\n"
 				<< "|Paint.exe_________________________________________________________";
